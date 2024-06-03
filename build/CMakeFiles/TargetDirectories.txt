@@ -1,3 +1,0 @@
-/home/tanmay/recording/audio-visualizer/build/CMakeFiles/AudioVisualizer.dir
-/home/tanmay/recording/audio-visualizer/build/CMakeFiles/edit_cache.dir
-/home/tanmay/recording/audio-visualizer/build/CMakeFiles/rebuild_cache.dir
