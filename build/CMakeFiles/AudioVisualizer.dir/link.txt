@@ -1,0 +1,1 @@
+/usr/bin/c++ "CMakeFiles/AudioVisualizer.dir/src/audio-stream.cc.o" CMakeFiles/AudioVisualizer.dir/src/main.cc.o -o AudioVisualizer  -lpipewire-0.3 -lraylib
