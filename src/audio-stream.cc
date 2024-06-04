@@ -1,4 +1,5 @@
 #include "audio-stream.h"
+#include "audio-processing.h"
 #include "pipewire/pipewire.h"
 #include "pipewire/thread-loop.h"
 #include "spa/param/audio/raw-utils.h"
@@ -12,23 +13,44 @@
 namespace Visualizer {
 namespace {
 
-constexpr int kBufferSize = 512;
-std::vector<float> computeFFT64(const float *inputArray, int length,
-                                int n_channels) {
-  int single_channel_size = length / n_channels;
-  const int N = single_channel_size;
+constexpr int kBufferSize = 1 << 13;
+
+std::array<double, kBufferSize> createHanningWindow() {
+  std::array<double, kBufferSize> window;
+  for (std::size_t i = 0; i < kBufferSize; ++i) {
+    window[i] = 0.5 * (1 - std::cos(2 * M_PI * i / (kBufferSize - 1)));
+  }
+  return window;
+}
+// constexpr double pi = []() {
+//   double pi = 0.0;
+//   for (int i = 0; i < 10000; ++i) {
+//     pi += (i % 2 == 0 ? 1 : -1) / (2.0 * i + 1);
+//   }
+//   return 4 * pi;
+// }();
+//
+// constexpr auto hanning_window = []() constexpr {
+//   constexpr std::array<float, kBufferSize> win;
+//   for (int i = 0; i < kBufferSize; i++) {
+//     // 0.5 * (1 - cos(2 * pi * i / (length - 1)))
+//     win[i] = 0.5f * (1 - std::cos(2 * pi * i / (kBufferSize - 1)));
+//   }
+//   return win;
+// }();
+
+auto hanning_window = createHanningWindow();
+std::vector<float> computeFFT64(const std::vector<float> &samples) {
+  const int N = samples.size();
   fftw_complex in[N], out[N];
   fftw_plan p;
 
   // Initialize input array
   for (int i = 0; i < N; ++i) {
-    if (i < single_channel_size) {
-      in[i][0] = static_cast<double>(inputArray[2 * i]); // Real part
-      in[i][1] = 0.0;                                    // Imaginary part
-    } else {
-      in[i][0] = 0.0; // Padding with zeros if input length < N
-      in[i][1] = 0.0;
-    }
+    in[i][0] =
+        static_cast<double>(samples.at(i)) * hanning_window[i]; // Real part
+    // static_cast<double>(samples.at(i)); // Real part
+    in[i][1] = 0.0; // Imaginary part
   }
 
   // Create plan for FFT
@@ -129,8 +151,16 @@ void AudioStream::OnProcess() {
   n_channels = context_->format.info.raw.channels;
   n_samples = buf->datas[0].chunk->size / sizeof(float);
   // FFT
-  freq_callback_(computeFFT64(samples, n_samples, n_channels));
+  std::vector<float> samples_to_process;
+  samples_to_process.reserve(n_samples / n_channels);
+
+  for (int i = 0; i < n_samples; i += n_channels) {
+    samples_to_process.push_back(samples[i]);
+  }
   pw_stream_queue_buffer(context_->stream, b);
+  auto fft_out = computeFFT64(samples_to_process);
+  freq_callback_(
+      audio::BandFrequencies(fft_out, context_->format.info.raw.rate));
 }
 void AudioStream::OnStreamParamChanged(uint32_t id,
                                        const struct spa_pod *param) {

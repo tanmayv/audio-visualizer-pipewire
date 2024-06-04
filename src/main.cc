@@ -34,8 +34,9 @@ static void Render() {
   assert(canvasWidth >= size);
   int cellWidth = canvasWidth / size;
   for (int i = 0; i < size; ++i) {
-    int barHeight = std::log2(1 + 10 * freqBuffer.at(i)) * canvasHeight * 0.05;
-    // int barHeight = 10 * freqBuffer.at(i);
+    // int barHeight = std::log2(1 + 10 * freqBuffer.at(i)) * canvasHeight *
+    // 0.05;
+    int barHeight = canvasHeight * 0.5 * freqBuffer.at(i);
     DrawRectangle(i * cellWidth, canvasHeight - barHeight, cellWidth, barHeight,
                   RED);
   }
