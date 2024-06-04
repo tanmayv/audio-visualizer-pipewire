@@ -1,29 +1,26 @@
 #include "audio-stream.h"
 #include "raylib.h"
-#include <atomic>
-#include <cassert>
-#include <cmath>
 #include <iostream>
+#include <mutex>
 #include <vector>
 
-#include <thread>
-
-void printThreadID() {
-  std::cout << "Thread ID: " << std::this_thread::get_id() << std::endl;
-}
-
+std::mutex freqBufferMtx;
 std::vector<float> freqBuffer;
 
 // Running on Audio Capture Thread
 static void OnFrequencyBuffer(std::vector<float> buffer) {
+  std::lock_guard<std::mutex> lock(freqBufferMtx);
   freqBuffer = std::move(buffer);
 }
 
 // Running on UI Thread
 static void Render() {
-  BeginDrawing();
 
+  // For some reason this has to be before acquiring lock;
+  BeginDrawing();
   ClearBackground(WHITE);
+  DrawFPS(10, 10);
+  std::lock_guard<std::mutex> guard(freqBufferMtx);
 
   // Draw a red rectangle
   int size = freqBuffer.size();
@@ -31,23 +28,18 @@ static void Render() {
   int canvasHeight = GetRenderHeight();
   if (size == 0)
     return;
-  assert(canvasWidth >= size);
   int cellWidth = canvasWidth / size;
   for (int i = 0; i < size; ++i) {
-    // int barHeight = std::log2(1 + 10 * freqBuffer.at(i)) * canvasHeight *
-    // 0.05;
     int barHeight = canvasHeight * 0.5 * freqBuffer.at(i);
     DrawRectangle(i * cellWidth, canvasHeight - barHeight, cellWidth, barHeight,
                   RED);
   }
-
   EndDrawing();
 }
 
 int main() {
   const int screenWidth = 1030;
   const int screenHeight = 450;
-  printThreadID();
   SetTargetFPS(60);
   Visualizer::AudioStream audio_stream(
       "Google Chrome",
