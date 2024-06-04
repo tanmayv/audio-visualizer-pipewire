@@ -1,14 +1,54 @@
 #include "audio-stream.h"
 #include "pipewire/pipewire.h"
+#include "pipewire/thread-loop.h"
 #include "spa/param/audio/raw-utils.h"
 #include "spa/pod/builder.h"
 #include "spa/pod/pod.h"
 #include <cmath>
 #include <cstdint>
+#include <fftw3.h>
 #include <memory>
 
 namespace Visualizer {
 namespace {
+
+constexpr int kBufferSize = 512;
+std::vector<float> computeFFT64(const float *inputArray, int length,
+                                int n_channels) {
+  int single_channel_size = length / n_channels;
+  const int N = single_channel_size;
+  fftw_complex in[N], out[N];
+  fftw_plan p;
+
+  // Initialize input array
+  for (int i = 0; i < N; ++i) {
+    if (i < single_channel_size) {
+      in[i][0] = static_cast<double>(inputArray[2 * i]); // Real part
+      in[i][1] = 0.0;                                    // Imaginary part
+    } else {
+      in[i][0] = 0.0; // Padding with zeros if input length < N
+      in[i][1] = 0.0;
+    }
+  }
+
+  // Create plan for FFT
+  p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+  // Execute FFT
+  fftw_execute(p);
+
+  // Compute amplitudes
+  std::vector<float> amplitudes(N / 2 + 1);
+  for (int i = 0; i < N / 2 + 1; i++) {
+    amplitudes[i] = sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]);
+  }
+
+  // Cleanup
+  fftw_destroy_plan(p);
+  fftw_cleanup();
+
+  return amplitudes;
+}
 
 static void on_process(void *as) {
   auto *audio_stream = static_cast<AudioStream *>(as);
@@ -40,7 +80,7 @@ static void do_quit(void *as, int signal_number) {
 
 void AudioStream::Start() {
 
-  uint8_t buffer[1024];
+  uint8_t buffer[kBufferSize];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
 
   /* Make one parameter with the supported formats. The SPA_PARAM_EnumFormat
@@ -61,11 +101,12 @@ void AudioStream::Start() {
       params, 1);
 
   /* and wait while we let things run */
-  pw_main_loop_run(context_->loop);
+  pw_thread_loop_start(context_->loop);
 }
 void AudioStream::Stop() {
+  pw_thread_loop_stop(context_->loop);
   pw_stream_destroy(context_->stream);
-  pw_main_loop_destroy(context_->loop);
+  pw_thread_loop_destroy(context_->loop);
   pw_deinit();
 }
 
@@ -87,26 +128,8 @@ void AudioStream::OnProcess() {
 
   n_channels = context_->format.info.raw.channels;
   n_samples = buf->datas[0].chunk->size / sizeof(float);
-
-  /* move cursor up */
-  if (context_->move)
-    fprintf(stdout, "%c[%dA", 0x1b, n_channels + 1);
-  fprintf(stdout, "captured %d samples\n", n_samples / n_channels);
-  std::vector<float> peaks;
-  for (c = 0; c < context_->format.info.raw.channels; c++) {
-    max = 0.0f;
-    for (n = c; n < n_samples; n += n_channels)
-      max = fmaxf(max, fabsf(samples[n]));
-
-    peak = SPA_CLAMP(max * 30, 0, 39);
-
-    fprintf(stdout, "channel %d: |%*s%*s| peak:%f\n", c, peak + 1, "*",
-            40 - peak, "", max);
-    peaks.push_back(max);
-  }
-  context_->move = true;
-  fflush(stdout);
-  freq_callback_(peaks);
+  // FFT
+  freq_callback_(computeFFT64(samples, n_samples, n_channels));
   pw_stream_queue_buffer(context_->stream, b);
 }
 void AudioStream::OnStreamParamChanged(uint32_t id,
@@ -132,7 +155,7 @@ void AudioStream::OnStreamParamChanged(uint32_t id,
 }
 
 void AudioStream::OnQuit(int signal_number) {
-  pw_main_loop_quit(context_->loop);
+  // pw_thread_loop_quit(context_->loop);
 }
 
 std::unique_ptr<AudioStream::Context> AudioStream::CreateContext() {
@@ -144,12 +167,13 @@ std::unique_ptr<AudioStream::Context> AudioStream::CreateContext() {
 
   /* make a main loop. If you already have another main loop, you can add
    * the fd of this pipewire mainloop to it. */
-  context->loop = pw_main_loop_new(NULL);
+  context->loop = pw_thread_loop_new("audio-capture-thread", NULL);
 
-  pw_loop_add_signal(pw_main_loop_get_loop(context->loop), SIGINT, do_quit,
-                     this);
-  pw_loop_add_signal(pw_main_loop_get_loop(context->loop), SIGTERM, do_quit,
-                     this);
+  // pw_loop_add_signal(pw_thread_loop_get_loop(context->loop), SIGINT, do_quit,
+  //                    this);
+  // pw_loop_add_signal(pw_thread_loop_get_loop(context->loop), SIGTERM,
+  // do_quit,
+  //                    this);
 
   /* Create a simple stream, the simple stream manages the core and remote
    * objects for you if you don't need to deal with them.
@@ -172,7 +196,7 @@ std::unique_ptr<AudioStream::Context> AudioStream::CreateContext() {
   /* pw_properties_set(props, PW_KEY_STREAM_CAPTURE_SINK, "true"); */
 
   context->stream =
-      pw_stream_new_simple(pw_main_loop_get_loop(context->loop),
+      pw_stream_new_simple(pw_thread_loop_get_loop(context->loop),
                            "audio-capture", props, &stream_events, this);
   return context;
 }

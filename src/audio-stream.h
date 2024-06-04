@@ -1,5 +1,5 @@
-#include "pipewire/main-loop.h"
 #include "pipewire/stream.h"
+#include "pipewire/thread-loop.h"
 #include "spa/param/audio/format.h"
 #include <functional>
 #include <memory>
@@ -12,7 +12,7 @@ public:
   using FreqCallback = std::function<void(std::vector<float>)>;
 
   struct Context {
-    struct pw_main_loop *loop;
+    struct pw_thread_loop *loop;
     struct pw_stream *stream;
     struct spa_audio_info format;
     unsigned move : 1;
