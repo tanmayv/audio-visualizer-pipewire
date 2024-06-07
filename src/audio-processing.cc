@@ -67,7 +67,7 @@ std::vector<float> BandFrequencies(std::vector<float> fft_out,
 std::vector<float> computeFFT64(const std::vector<float> &samples,
                                 double sample_rate) {
   const int N = samples.size();
-  const int maxFrequency = 15000;
+  const int maxFrequency = 20000;
   double freqResolution = sample_rate / N; // Frequency resolution
   int maxIndex = static_cast<int>(maxFrequency / freqResolution);
   fftw_complex in[N], out[N];
@@ -98,7 +98,7 @@ std::vector<float> computeFFT64(const std::vector<float> &samples,
     amplitudes[i] = (sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
     amplitudes[i] = 20.0f * std::log10(amplitudes[i] + 0.00001);
     // reduce dynamic range
-    amplitudes[i] = std::pow(amplitudes[i], 0.3);
+    // amplitudes[i] = std::pow(amplitudes[i], 0.3);
   }
 
   // Cleanup
@@ -135,5 +135,29 @@ std::vector<int> binsToRenderMel(int fftSize, double sampleRate,
   return bins;
 }
 
+std::vector<float> FrequencyBands(std::vector<float> frequencies,
+                                  int band_count) {
+  std::vector<float> bands(band_count);
+  int freq_index = 0;
+  float avg = 0;
+  int count = 0;
+  for (int i = 0; i < band_count - 1; i++) {
+    avg = 0;
+    count = 0;
+    while (freq_index <= std::pow(2, i)) {
+      avg += frequencies[freq_index++];
+      count++;
+    }
+    bands[i] = avg / count;
+  }
+  while (freq_index < frequencies.size()) {
+    avg += frequencies[freq_index++];
+    count++;
+  }
+  bands[band_count - 1] = avg / count;
+  return bands;
+}
+
 } // namespace audio
-  //
+// namespace audio
+//

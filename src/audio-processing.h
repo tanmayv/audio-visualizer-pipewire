@@ -8,4 +8,6 @@ std::vector<float> computeFFT64(const std::vector<float> &samples,
                                 double sample_rate);
 std::vector<int> binsToRenderMel(int fftSize, double sampleRate,
                                  int numMelBands);
+std::vector<float> FrequencyBands(std::vector<float> frequencies,
+                                  int band_count);
 } // namespace audio

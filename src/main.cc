@@ -28,6 +28,14 @@ static void ProcessAudio() {
   if (samples.size() == 0)
     return;
   frequencies = audio::computeFFT64(samples, sample_rate);
+  frequencies = audio::FrequencyBands(frequencies, 8);
+  if (renderedFrequencies.size() < frequencies.size()) {
+    // renderedFrequencies.clear();
+    // for (auto f : frequencies) {
+    //   renderedFrequencies.push_back(f);
+    // }
+    renderedFrequencies = frequencies;
+  }
   ClearBackground(WHITE);
 }
 
@@ -81,8 +89,11 @@ static void Render() {
   int cellWidth = canvasWidth / size;
   std::string tot = "total freq: " + std::to_string(size);
   DrawText(tot.data(), 100, 100, 24, WHITE);
+  assert(renderedFrequencies.size() == frequencies.size());
   for (int i = 0; i < size; ++i) {
-    int barHeight = std::min(100 * frequencies.at(i), 1080.0f);
+    renderedFrequencies[i] +=
+        (frequencies[i] - renderedFrequencies[i]) * GetFrameTime() * 20;
+    int barHeight = std::min(20 * renderedFrequencies.at(i), 1080.0f);
     DrawRectangle(i * cellWidth, canvasHeight - barHeight - 20, cellWidth,
                   barHeight, RED);
   }
