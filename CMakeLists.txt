@@ -14,7 +14,7 @@ file(GLOB SOURCES "src/*.cc")
 file(GLOB HEADERS "src/*.h")
 
 # Add executable and link libraries
-add_executable(AudioVisualizer ${SOURCES})
+add_executable(AudioVisualizer ${SOURCES} ${HEADERS})
 target_link_libraries(AudioVisualizer ${PIPEWIRE_LIBRARIES} ${RAYLIB_LIBRARIES} ${FFTW_LIBRARIES})
 include_directories(${PIPEWIRE_INCLUDE_DIRS} ${HEADERS} ${RAYLIB_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS})
 

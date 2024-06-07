@@ -12,16 +12,17 @@
 
 namespace Visualizer {
 namespace {
-
 constexpr int kBufferSize = 1 << 13;
 
-std::array<double, kBufferSize> createHanningWindow() {
-  std::array<double, kBufferSize> window;
-  for (std::size_t i = 0; i < kBufferSize; ++i) {
-    window[i] = 0.5 * (1 - std::cos(2 * M_PI * i / (kBufferSize - 1)));
-  }
-  return window;
-}
+// std::array<double, kBufferSize> createHanningWindow() {
+//   std::array<double, kBufferSize> window;
+//   for (std::size_t i = 0; i < kBufferSize; ++i) {
+//     window[i] = 0.5 * (1 - std::cos(2 * M_PI * i / (kBufferSize - 1)));
+//   }
+//   return window;
+// }
+//
+// auto hanning_window = createHanningWindow();
 // constexpr double pi = []() {
 //   double pi = 0.0;
 //   for (int i = 0; i < 10000; ++i) {
@@ -38,39 +39,6 @@ std::array<double, kBufferSize> createHanningWindow() {
 //   }
 //   return win;
 // }();
-
-auto hanning_window = createHanningWindow();
-std::vector<float> computeFFT64(const std::vector<float> &samples) {
-  const int N = samples.size();
-  fftw_complex in[N], out[N];
-  fftw_plan p;
-
-  // Initialize input array
-  for (int i = 0; i < N; ++i) {
-    in[i][0] =
-        static_cast<double>(samples.at(i)) * hanning_window[i]; // Real part
-    // static_cast<double>(samples.at(i)); // Real part
-    in[i][1] = 0.0; // Imaginary part
-  }
-
-  // Create plan for FFT
-  p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
-  // Execute FFT
-  fftw_execute(p);
-
-  // Compute amplitudes
-  std::vector<float> amplitudes(N / 2 + 1);
-  for (int i = 0; i < N / 2 + 1; i++) {
-    amplitudes[i] = sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]);
-  }
-
-  // Cleanup
-  fftw_destroy_plan(p);
-  fftw_cleanup();
-
-  return amplitudes;
-}
 
 static void on_process(void *as) {
   auto *audio_stream = static_cast<AudioStream *>(as);
@@ -158,9 +126,8 @@ void AudioStream::OnProcess() {
     samples_to_process.push_back(samples[i]);
   }
   pw_stream_queue_buffer(context_->stream, b);
-  auto fft_out = computeFFT64(samples_to_process);
-  freq_callback_(
-      audio::BandFrequencies(fft_out, context_->format.info.raw.rate));
+  freq_callback_(samples_to_process,
+                 context_->format.info.raw.rate / n_channels);
 }
 void AudioStream::OnStreamParamChanged(uint32_t id,
                                        const struct spa_pod *param) {

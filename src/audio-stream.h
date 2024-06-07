@@ -9,7 +9,7 @@
 namespace Visualizer {
 class AudioStream {
 public:
-  using FreqCallback = std::function<void(std::vector<float>)>;
+  using FreqCallback = std::function<void(std::vector<float>, int)>;
 
   struct Context {
     struct pw_thread_loop *loop;
