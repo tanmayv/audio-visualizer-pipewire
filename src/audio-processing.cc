@@ -96,7 +96,7 @@ std::vector<float> computeFFT64(const std::vector<float> &samples,
     //     +
     //                     0.000001);
     amplitudes[i] = (sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
-    amplitudes[i] = 20.0f * std::log10(amplitudes[i] + 0.00001);
+    // amplitudes[i] = 20.0f * std::log10(amplitudes[i] + 0.00000001);
     // reduce dynamic range
     // amplitudes[i] = std::pow(amplitudes[i], 0.3);
   }
@@ -135,6 +135,25 @@ std::vector<int> binsToRenderMel(int fftSize, double sampleRate,
   return bins;
 }
 
+std::vector<float> FrequencyBands16(std::vector<float> frequencies) {
+  std::vector<float> bands;
+  int freq_index = 1;
+  float avg = 0;
+  int count = 0;
+  int endIndex = 1;
+  while (freq_index < frequencies.size()) {
+    endIndex = std::min(endIndex, (int)(frequencies.size() - 1));
+    float sum = 0;
+    float count = 0;
+    while (freq_index <= endIndex) {
+      sum += frequencies[freq_index++];
+      count++;
+    }
+    bands.push_back(sum / count);
+    endIndex = std::ceil(1.06 * endIndex);
+  }
+  return bands;
+}
 std::vector<float> FrequencyBands(std::vector<float> frequencies,
                                   int band_count) {
   std::vector<float> bands(band_count);

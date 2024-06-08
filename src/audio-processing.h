@@ -10,4 +10,5 @@ std::vector<int> binsToRenderMel(int fftSize, double sampleRate,
                                  int numMelBands);
 std::vector<float> FrequencyBands(std::vector<float> frequencies,
                                   int band_count);
+std::vector<float> FrequencyBands16(std::vector<float> frequencies);
 } // namespace audio
