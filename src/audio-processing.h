@@ -75,7 +75,6 @@ void computeFFT64(std::array<float, sample_count> &&samples,
 
   output.max_amplitude = max_amplitude;
   output.avg_amplitude = sum / std::min(maxIndex, out_size);
-  std::cout << " >" << out[5][0] << ", " << out[5][1];
 
   for (int i = 0; i <= maxIndex && i < out_size; i++) {
     output.samples[i].normalized_amplitude /= max_amplitude;

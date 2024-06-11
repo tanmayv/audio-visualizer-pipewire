@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <mutex>
 #include <string>
@@ -396,21 +397,29 @@
 // }
 
 int main() {
-  audio::AudioProcessor<48000, 1 << 11> processor_("Test");
-
+  constexpr size_t sample_rate = 48000;
+  constexpr size_t buffer_size = 1 << 10;
+  audio::AudioProcessor<sample_rate, buffer_size> processor_("Test");
   Visualizer::AudioStream audio_stream(
-      "Google Chrome", [&](std::vector<float> samples, size_t sample_rate) {
-        std::array<float, 1 << 11> new_samples;
-        for (int i = 0; i < samples.size(); i++) {
-          new_samples[i] = samples[i];
-        }
+      "Google Chrome", sample_rate, buffer_size,
+      [&](std::vector<float> samples, size_t sample_rate) {
+        std::array<float, buffer_size> new_samples;
+        std::move(samples.begin(), samples.end(), new_samples.begin());
         processor_.OnNewSample(std::move(new_samples));
       });
-  InitWindow(10, 10, "Example");
+
+  static float radius = 100;
+  InitWindow(500, 500, "Example");
   audio_stream.Start();
   while (!WindowShouldClose()) {
     BeginDrawing();
     ClearBackground(BLACK);
+    std::string avg_amplitude =
+        "Avg amplitude: " + std::to_string(processor_.Buffer().avg_amplitude);
+    float want_radius = 100 * processor_.Buffer().avg_amplitude;
+    radius += (want_radius - radius) * GetFrameTime() * 20;
+    DrawText(avg_amplitude.data(), 10, 10, 24, WHITE);
+    DrawCircle(250, 250, radius, RED);
     EndDrawing();
   }
   audio_stream.Stop();

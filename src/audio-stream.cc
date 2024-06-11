@@ -12,7 +12,7 @@
 
 namespace Visualizer {
 namespace {
-constexpr int kBufferSize = 1 << 13;
+// constexpr int kBufferSize = 1 << 13;
 
 // std::array<double, kBufferSize> createHanningWindow() {
 //   std::array<double, kBufferSize> window;
@@ -70,7 +70,7 @@ static void do_quit(void *as, int signal_number) {
 
 void AudioStream::Start() {
 
-  uint8_t buffer[kBufferSize];
+  uint8_t buffer[buffer_size_];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
 
   /* Make one parameter with the supported formats. The SPA_PARAM_EnumFormat
@@ -78,8 +78,9 @@ void AudioStream::Start() {
    * We leave the channels and rate empty to accept the native graph
    * rate and channels. */
   const struct spa_pod *params[1];
-  auto placeholder = SPA_AUDIO_INFO_RAW_INIT(.format = SPA_AUDIO_FORMAT_F32,
-                                             .rate = 48000, .channels = 1);
+  auto placeholder =
+      SPA_AUDIO_INFO_RAW_INIT(.format = SPA_AUDIO_FORMAT_F32,
+                              .rate = sample_rate_, .channels = 1);
   params[0] =
       spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &placeholder);
 

@@ -13,16 +13,14 @@ template <size_t sample_rate, size_t sample_count,
 class AudioProcessor {
 public:
   AudioProcessor(std::string_view source)
-      : source_(source), current_buffer_(front_buffer_) {
-    front_buffer_ = {.samples = {0}};
-    back_buffer_ = {.samples = {0}};
-  }
+      : source_(source), current_buffer_(front_buffer_) {}
 
   void OnNewSample(std::array<float, sample_count> &&sample) {
     ProcessAudioSamplesIntoBackBuffer(std::move(sample));
     SwitchBuffers();
   }
   const ProcessedAudioBuffer<frequencies_count> &Buffer() {
+    std::lock_guard<std::mutex> lock(buffer_lock_);
     return current_buffer_;
   }
 
@@ -31,7 +29,6 @@ private:
   ProcessAudioSamplesIntoBackBuffer(std::array<float, sample_count> &&sample) {
     computeFFT64<sample_count, sample_rate>(std::move(sample),
                                             AlternateBuffer());
-    []() {};
   }
 
   ProcessedAudioBuffer<frequencies_count> &AlternateBuffer() {
