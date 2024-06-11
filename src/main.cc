@@ -399,6 +399,7 @@
 int main() {
   constexpr size_t sample_rate = 48000;
   constexpr size_t buffer_size = 1 << 10;
+  constexpr size_t frequency_count = sample_rate / 2 + 1;
   audio::AudioProcessor<sample_rate, buffer_size> processor_("Test");
   Visualizer::AudioStream audio_stream(
       "Google Chrome", sample_rate, buffer_size,
@@ -409,17 +410,27 @@ int main() {
       });
 
   static float radius = 100;
-  InitWindow(500, 500, "Example");
+  InitWindow(1000, 1000, "Example");
   audio_stream.Start();
   while (!WindowShouldClose()) {
+    const auto &buffer = processor_.Buffer();
     BeginDrawing();
     ClearBackground(BLACK);
     std::string avg_amplitude =
-        "Avg amplitude: " + std::to_string(processor_.Buffer().avg_amplitude);
-    float want_radius = 100 * processor_.Buffer().avg_amplitude;
+        "Avg amplitude: " + std::to_string(buffer.avg_amplitude);
+    float want_radius = 100 * buffer.avg_amplitude;
     radius += (want_radius - radius) * GetFrameTime() * 20;
     DrawText(avg_amplitude.data(), 10, 10, 24, WHITE);
-    DrawCircle(250, 250, radius, RED);
+    DrawCircle(GetRenderWidth() / 2, GetRenderHeight() / 2, radius, RED);
+    int cellWidth = GetRenderWidth() / buffer.squashed_samples.size();
+    for (int i = 0; i < buffer.squashed_samples.size(); i++) {
+      DrawRectangle(i * cellWidth, 0, cellWidth,
+                    buffer.squashed_samples[i] * GetRenderHeight() * 0.95,
+                    WHITE);
+    }
+    // auto freq_bands =
+    //     audio::FrequencyBands<8,
+    //     frequency_count>(processor_.Buffer().samples);
     EndDrawing();
   }
   audio_stream.Stop();

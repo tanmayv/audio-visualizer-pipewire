@@ -9,7 +9,7 @@
 namespace audio {
 
 template <size_t sample_rate, size_t sample_count,
-          size_t frequencies_count = sample_rate / 2 + 1>
+          size_t frequencies_count = sample_count / 2 + 1>
 class AudioProcessor {
 public:
   AudioProcessor(std::string_view source)
