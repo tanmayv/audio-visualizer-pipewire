@@ -8,7 +8,7 @@
 
 namespace audio {
 
-constexpr int kBufferSize = (1 << 13) / 2;
+constexpr int kBufferSize = (1 << 11);
 
 auto createHanningWindow() {
   std::array<double, kBufferSize> window{0};
@@ -64,49 +64,50 @@ std::vector<float> BandFrequencies(std::vector<float> fft_out,
   return filtered_bands;
 }
 
-std::vector<float> computeFFT64(const std::vector<float> &samples,
-                                double sample_rate) {
-  const int N = samples.size();
-  const int maxFrequency = 20000;
-  double freqResolution = sample_rate / N; // Frequency resolution
-  int maxIndex = static_cast<int>(maxFrequency / freqResolution);
-  fftw_complex in[N], out[N];
-  fftw_plan p;
-
-  // Initialize input array
-  for (int i = 0; i < N; ++i) {
-    auto hanning_multiplier = 0.5 * (1 - std::cos(2 * M_PI * i / (N - 1)));
-    in[i][0] =
-        static_cast<double>(samples.at(i)) * hanning_multiplier; // Real part
-    // static_cast<double>(samples.at(i)); // Real part
-    in[i][1] = 0.0; // Imaginary part
-  }
-
-  // Create plan for FFT
-  p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
-  // Execute FFT
-  fftw_execute(p);
-
-  // Compute amplitudes
-  std::vector<float> amplitudes(std::min(maxIndex + 1, N / 2 + 1));
-  for (int i = 0; i <= maxIndex && i < N / 2 + 1; i++) {
-    // amplitudes[i] =
-    //     20 * std::log10((sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]))
-    //     +
-    //                     0.000001);
-    amplitudes[i] = (sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
-    // amplitudes[i] = 20.0f * std::log10(amplitudes[i] + 0.00000001);
-    // reduce dynamic range
-    // amplitudes[i] = std::pow(amplitudes[i], 0.3);
-  }
-
-  // Cleanup
-  fftw_destroy_plan(p);
-  fftw_cleanup();
-
-  return amplitudes;
-}
+// std::vector<float> computeFFT64(const std::vector<float> &samples,
+//                                 double sample_rate) {
+//   const int N = samples.size();
+//   const int maxFrequency = 20000;
+//   double freqResolution = sample_rate / N; // Frequency resolution
+//   int maxIndex = static_cast<int>(maxFrequency / freqResolution);
+//   fftw_complex in[N], out[N];
+//   fftw_plan p;
+//
+//   // Initialize input array
+//   for (int i = 0; i < N; ++i) {
+//     auto hanning_multiplier = 0.5 * (1 - std::cos(2 * M_PI * i / (N - 1)));
+//     in[i][0] =
+//         static_cast<double>(samples.at(i)) * hanning_multiplier; // Real part
+//     // static_cast<double>(samples.at(i)); // Real part
+//     in[i][1] = 0.0; // Imaginary part
+//   }
+//
+//   // Create plan for FFT
+//   p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+//
+//   // Execute FFT
+//   fftw_execute(p);
+//
+//   // Compute amplitudes
+//   std::vector<float> amplitudes(std::min(maxIndex + 1, N / 2 + 1));
+//   for (int i = 0; i <= maxIndex && i < N / 2 + 1; i++) {
+//     // amplitudes[i] =
+//     //     20 * std::log10((sqrt(out[i][0] * out[i][0] + out[i][1] *
+//     out[i][1]))
+//     //     +
+//     //                     0.000001);
+//     amplitudes[i] = (sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
+//     // amplitudes[i] = 20.0f * std::log10(amplitudes[i] + 0.00000001);
+//     // reduce dynamic range
+//     // amplitudes[i] = std::pow(amplitudes[i], 0.3);
+//   }
+//
+//   // Cleanup
+//   fftw_destroy_plan(p);
+//   fftw_cleanup();
+//
+//   return amplitudes;
+// }
 
 // Convert frequency to mel scale
 double freqToMel(double freq) {

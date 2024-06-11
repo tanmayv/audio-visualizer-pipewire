@@ -78,7 +78,8 @@ void AudioStream::Start() {
    * We leave the channels and rate empty to accept the native graph
    * rate and channels. */
   const struct spa_pod *params[1];
-  auto placeholder = SPA_AUDIO_INFO_RAW_INIT(.format = SPA_AUDIO_FORMAT_F32);
+  auto placeholder = SPA_AUDIO_INFO_RAW_INIT(.format = SPA_AUDIO_FORMAT_F32,
+                                             .rate = 48000, .channels = 1);
   params[0] =
       spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &placeholder);
 
