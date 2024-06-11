@@ -428,9 +428,6 @@ int main() {
                     buffer.squashed_samples[i] * GetRenderHeight() * 0.95,
                     WHITE);
     }
-    // auto freq_bands =
-    //     audio::FrequencyBands<8,
-    //     frequency_count>(processor_.Buffer().samples);
     EndDrawing();
   }
   audio_stream.Stop();

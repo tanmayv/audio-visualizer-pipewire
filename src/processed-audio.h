@@ -2,7 +2,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <iostream>
+
 namespace audio {
 constexpr auto squashed_sample_size = [](size_t raw_samples_count) {
   size_t count = 0;
@@ -12,8 +12,6 @@ constexpr auto squashed_sample_size = [](size_t raw_samples_count) {
        f = std::ceilf(f * step)) {
     count++;
   }
-  // std::cout << " Calculating size: " << count;
-  // std::flush(std::cout);
   return count;
 };
 
