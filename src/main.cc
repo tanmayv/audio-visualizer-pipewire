@@ -29,13 +29,17 @@ void RenderBars(
 
     bar_height = rendered_bar_heights[i];
 
+    float hue = 180 + float(i) / bar_count * 180;
+    float saturation = 1.0f;
+    float value = 1.0f;
+    Color color = ColorFromHSV(hue, saturation, value);
     DrawRectangleRec(
         {.x = start_x + 2 * i * bar_width,
          .y = static_cast<float>((GetRenderHeight() - bar_height) / 2) - 100.0f,
          .width = static_cast<float>(bar_width),
          .height = static_cast<float>(bar_height)},
         // 5, 5,
-        RED);
+        color);
   }
 }
 
@@ -43,11 +47,17 @@ void RenderCircle(
     const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
   Vector2 center = {.x = GetRenderWidth() / 2, .y = GetRenderHeight() / 2};
   float radius = (drawable_width * 1.5 / 2.0f);
+  float outer_radius = radius + std::max(audio_buffer.avg_amplitude * 25, 1.0f);
+  static float rendered_radius = 0.0f;
+  rendered_radius += (outer_radius - rendered_radius) * GetFrameTime() * 20;
   // DrawCircleLinesV(center, radius, WHITE);
-  DrawRing(center, radius,
-           radius + std::max(audio_buffer.avg_amplitude * 15, 1.0f), 0, 360,
-           100,
-           WHITE); // Draw ring outline
+  float hue =
+      300 + 1000 * (audio_buffer.avg_amplitude / audio_buffer.max_amplitude);
+  float saturation = 1.0f;
+  float value = 1.0f;
+  Color color = ColorFromHSV(hue, saturation, value);
+  DrawRing(center, radius, rendered_radius, 0, 360, 100,
+           color); // Draw ring outline
 }
 
 template <size_t K, size_t frequency_count>
