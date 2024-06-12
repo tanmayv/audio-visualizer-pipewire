@@ -14,7 +14,7 @@
 static constexpr size_t sample_rate = 48000;
 static constexpr size_t buffer_size = 1 << 10;
 static constexpr size_t frequency_count = buffer_size / 2 + 1;
-static constexpr size_t drawable_width = 500;
+static constexpr size_t drawable_width = 400;
 
 struct BarOptions {
   bool disabled = false;
@@ -25,7 +25,7 @@ struct BarOptions {
   float hue_start = 180.0f;
   float hue_dynamic_range = 180.f;
   float pos_y_offset = 100.0f;
-  bool enable_changing_hue = false;
+  bool enable_changing_hue = true;
   float changing_hue_speed = 10.0f;
 };
 
@@ -36,7 +36,7 @@ struct CircleOptions {
   float anim_smoothness = 20.0f;
   float hue_start = 300.0f;
   float hue_dynamic_range = 1000.f;
-  bool enable_changing_hue = false;
+  bool enable_changing_hue = true;
   float changing_hue_speed = 10.0f;
   int segments = 100;
   float start_angle_deg = 0.0f;
@@ -45,14 +45,14 @@ struct CircleOptions {
 
 struct WaveOptions {
   bool disabled = false;
-  float anim_smoothness = 40.0f;
+  float anim_smoothness = 20.0f;
   float hue = 60.0f;
   float pos_y_offset = 100.0f;
   int wave_count = 3;
   float damp_strength = 200.0f;
   float x_movement_speed = 10.f;
   float amplitude_mult = 30.0f;
-  float frequency_mult = 3.0f;
+  float frequency_mult = 2.0f;
   float thickness = 5.0f;
 };
 
@@ -278,7 +278,7 @@ void RenderWaveOptionConfigurator(WaveOptions &wave_options) {
   ImGui::SliderInt("wave_count", &wave_options.wave_count, 1, 10);
   ImGui::SliderFloat("frequency_mult", &wave_options.frequency_mult, 1.0f,
                      10.0f);
-  ImGui::SliderFloat("thickness", &wave_options.thickness, 1.0f, 10.0f);
+  ImGui::SliderFloat("thickness", &wave_options.thickness, 1.0f, 20.0f);
 
   ImGui::End();
 }
