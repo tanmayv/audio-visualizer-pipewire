@@ -21,8 +21,10 @@ void RenderBars(const audio::ProcessedAudioBuffer &audio_buffer) {
   static std::vector<float> rendered_bar_heights(bar_count);
 
   for (int i = 0; i < bar_count; i++) {
-    float bar_height = std::max(
-        audio_buffer.squashed_samples[i].normalized_amplitude * 180, 10.0f);
+    float bar_height = 10.0f;
+    if (audio_buffer.max_amplitude > 5.0f)
+      bar_height = std::max(
+          audio_buffer.squashed_samples[i].normalized_amplitude * 180, 10.0f);
     rendered_bar_heights[i] +=
         (bar_height - rendered_bar_heights[i]) * GetFrameTime() * 40;
 
