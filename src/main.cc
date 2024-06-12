@@ -1,6 +1,7 @@
 #include "audio-processing.h"
 #include "audio-processor.h"
 #include "audio-stream.h"
+#include "processed-audio.h"
 #include "raylib.h"
 #include <algorithm>
 #include <atomic>
@@ -396,10 +397,99 @@
 //   return 0;
 // }
 
+static constexpr size_t sample_rate = 48000;
+static constexpr size_t buffer_size = 1 << 10;
+static constexpr size_t frequency_count = buffer_size / 2 + 1;
+static constexpr size_t drawable_width = 900;
+
+void RenderBars(
+    const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
+  float start_x = (GetRenderWidth() - drawable_width) / 2;
+  size_t bar_count = audio_buffer.squashed_samples.size();
+  float bar_width = drawable_width / (2 * bar_count - 1);
+  static std::vector<float> rendered_bar_heights(bar_count);
+
+  for (int i = 0; i < bar_count; i++) {
+    float bar_height = std::max(
+        audio_buffer.squashed_samples[i].normalized_amplitude * 180, 10.0f);
+    rendered_bar_heights[i] +=
+        (bar_height - rendered_bar_heights[i]) * GetFrameTime() * 40;
+
+    bar_height = rendered_bar_heights[i];
+
+    DrawRectangleRec(
+        {.x = start_x + 2 * i * bar_width,
+         .y = static_cast<float>((GetRenderHeight() - bar_height) / 2) - 100.0f,
+         .width = static_cast<float>(bar_width),
+         .height = static_cast<float>(bar_height)},
+        // 5, 5,
+        RED);
+  }
+}
+
+template <size_t K>
+std::array<audio::ProcessedAudioSample, K>
+maxKElements(const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
+  // if (K <= 0 || arr.size() < K) {
+  //   return {};
+  // }
+
+  // Initialize an array of size K with the smallest possible integer values
+  std::array<audio::ProcessedAudioSample, K> topKElements{0};
+
+  for (auto sample : audio_buffer.samples) {
+    // Find the position where the current element should be inserted
+    auto pos = std::find_if(topKElements.begin(), topKElements.end(),
+                            [sample](audio::ProcessedAudioSample x) {
+                              // if (sample.frequency < 1000 || sample.frequency
+                              // > 15000)
+                              //   return false;
+                              return sample.normalized_amplitude >
+                                     x.normalized_amplitude;
+                            });
+
+    if (pos != topKElements.end()) {
+      // Shift elements to the left to make space for the new element
+      std::copy_backward(pos, topKElements.end() - 1, topKElements.end());
+      *pos = sample;
+    }
+  }
+
+  return topKElements;
+}
+void RenderWave(
+    const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
+  float start_x = (GetRenderWidth() - drawable_width) / 2;
+  constexpr size_t max_elements = 5;
+  auto max_components = maxKElements<max_elements>(audio_buffer);
+  std::array<Vector2, drawable_width> points{0};
+  static std::array<Vector2, drawable_width> rendered_points{
+      GetRenderHeight() / 2 + 100.0f};
+
+  for (int i = 0; i < drawable_width; i++) {
+    for (auto &sample : max_components) {
+      const float angularFrequency = -2.0f * PI * sample.frequency;
+      float y = 20 * sample.normalized_amplitude *
+                sinf(i * angularFrequency / sample_rate);
+      points[i].y += y;
+      points[i].x = start_x + i;
+    }
+  }
+  for (int i = 0; i < points.size(); i++) {
+    rendered_points[i].x = start_x + i;
+    rendered_points[i].y -= GetRenderHeight() / 2 + 100.0f;
+    rendered_points[i].y +=
+        (points[i].y - rendered_points[i].y) * GetFrameTime() * 10;
+    rendered_points[i].y += GetRenderHeight() / 2 + 100.0f;
+  }
+
+  DrawSplineBezierCubic(rendered_points.data(), rendered_points.size(),
+                        1.0f + audio_buffer.avg_amplitude /
+                                   audio_buffer.max_amplitude * 200,
+                        YELLOW); // Draw spline: Linear, minimum 2 points
+}
+
 int main() {
-  constexpr size_t sample_rate = 48000;
-  constexpr size_t buffer_size = 1 << 10;
-  constexpr size_t frequency_count = sample_rate / 2 + 1;
   audio::AudioProcessor<sample_rate, buffer_size> processor_("Test");
   Visualizer::AudioStream audio_stream(
       "Google Chrome", sample_rate, buffer_size,
@@ -416,18 +506,20 @@ int main() {
     const auto &buffer = processor_.Buffer();
     BeginDrawing();
     ClearBackground(BLACK);
-    std::string avg_amplitude =
-        "Avg amplitude: " + std::to_string(buffer.avg_amplitude);
-    float want_radius = 100 * buffer.avg_amplitude;
-    radius += (want_radius - radius) * GetFrameTime() * 20;
-    DrawText(avg_amplitude.data(), 10, 10, 24, WHITE);
-    DrawCircle(GetRenderWidth() / 2, GetRenderHeight() / 2, radius, RED);
-    int cellWidth = GetRenderWidth() / buffer.squashed_samples.size();
-    for (int i = 0; i < buffer.squashed_samples.size(); i++) {
-      DrawRectangle(i * cellWidth, 0, cellWidth,
-                    buffer.squashed_samples[i] * GetRenderHeight() * 0.95,
-                    WHITE);
-    }
+    RenderBars(buffer);
+    // std::string avg_amplitude =
+    //     "Avg amplitude: " + std::to_string(buffer.avg_amplitude);
+    // float want_radius = 100 * buffer.avg_amplitude;
+    // radius += (want_radius - radius) * GetFrameTime() * 20;
+    // DrawText(avg_amplitude.data(), 10, 10, 24, WHITE);
+    // DrawCircle(GetRenderWidth() / 2, GetRenderHeight() / 2, radius, RED);
+    // int cellWidth = GetRenderWidth() / buffer.squashed_samples.size();
+    // for (int i = 0; i < buffer.squashed_samples.size(); i++) {
+    //   DrawRectangle(i * cellWidth, 0, cellWidth,
+    //                 buffer.squashed_samples[i] * GetRenderHeight() *
+    //                 0.95, WHITE);
+    // }
+    RenderWave(buffer);
     EndDrawing();
   }
   audio_stream.Stop();

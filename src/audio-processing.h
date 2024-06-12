@@ -1,10 +1,10 @@
 #pragma once
 #include "processed-audio.h"
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <fftw3.h>
-#include <iostream>
 #include <ostream>
 #include <vector>
 namespace audio {
@@ -63,17 +63,15 @@ void computeFFT64(std::array<float, sample_count> &&samples,
     //                     0.000001);
     output.samples[i].sine_component = out[i][0];
     output.samples[i].cosine_component = out[i][1];
+    output.samples[i].frequency = i * sample_rate / sample_count;
 
+    // float amplitude =
+    //     (std::logf(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
     float amplitude =
-        (std::logf(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
-    // amplitude = 20.0f * std::log10(amplitude + 0.00000001);
+        (std::sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
     max_amplitude = std::max(max_amplitude, amplitude);
     sum += amplitude;
     output.samples[i].normalized_amplitude = amplitude;
-
-    // amplitudes[i] = 20.0f * std::log10(amplitudes[i] + 0.00000001);
-    // reduce dynamic range
-    // amplitudes[i] = std::pow(amplitudes[i], 0.3);
   }
 
   output.max_amplitude = max_amplitude;
@@ -91,12 +89,15 @@ void computeFFT64(std::array<float, sample_count> &&samples,
   for (float f = lowf; (size_t)f < out_size / 2; f = std::ceilf(f * step)) {
     float f1 = std::ceilf(f * step);
     float a = 0.0f;
+    float ff = 0.0f;
     for (size_t q = (size_t)f; q < out_size / 2 && q < (size_t)f1; ++q) {
       float b = output.samples[q].normalized_amplitude;
-      if (b > a)
+      if (b > a) {
         a = b;
+        ff = output.samples[q].frequency;
+      }
     }
-    output.squashed_samples[m++] = a;
+    output.squashed_samples[m++] = {.normalized_amplitude = a, .frequency = ff};
   }
 
   // Cleanup

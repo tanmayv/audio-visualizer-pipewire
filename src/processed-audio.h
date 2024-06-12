@@ -19,11 +19,17 @@ struct ProcessedAudioSample {
   float sine_component;
   float cosine_component;
   float normalized_amplitude;
+  float frequency;
+};
+
+struct FreqAmpPair {
+  float normalized_amplitude;
+  float frequency;
 };
 
 template <size_t sample_count> struct ProcessedAudioBuffer {
   std::array<ProcessedAudioSample, sample_count> samples;
-  std::array<float, squashed_sample_size(sample_count)> squashed_samples;
+  std::array<FreqAmpPair, squashed_sample_size(sample_count)> squashed_samples;
   float max_amplitude;
   float avg_amplitude;
 };

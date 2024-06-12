@@ -49,8 +49,8 @@ private:
   std::string source_;
   std::mutex buffer_lock_;
   bool is_front_buffer_active_;
-  ProcessedAudioBuffer<frequencies_count> front_buffer_;
-  ProcessedAudioBuffer<frequencies_count> back_buffer_;
+  ProcessedAudioBuffer<frequencies_count> front_buffer_ = {0};
+  ProcessedAudioBuffer<frequencies_count> back_buffer_ = {0};
   ProcessedAudioBuffer<frequencies_count> &current_buffer_;
 };
 } // namespace audio

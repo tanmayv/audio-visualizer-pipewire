@@ -1,13 +1,14 @@
 #include "audio-stream.h"
 #include "audio-processing.h"
 #include "pipewire/pipewire.h"
+#include "pipewire/stream.h"
 #include "pipewire/thread-loop.h"
 #include "spa/param/audio/raw-utils.h"
 #include "spa/pod/builder.h"
 #include "spa/pod/pod.h"
-#include <cmath>
 #include <cstdint>
 #include <fftw3.h>
+#include <iostream>
 #include <memory>
 
 namespace Visualizer {
@@ -70,7 +71,7 @@ static void do_quit(void *as, int signal_number) {
 
 void AudioStream::Start() {
 
-  uint8_t buffer[buffer_size_];
+  size_t buffer[buffer_size_];
   struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
 
   /* Make one parameter with the supported formats. The SPA_PARAM_EnumFormat
@@ -123,7 +124,8 @@ void AudioStream::OnProcess() {
   // FFT
   std::vector<float> samples_to_process;
   samples_to_process.reserve(n_samples / n_channels);
-
+  // samples_to_process.reserve(n_samples / n_channels);
+  // std::cout << "|Received " << n_samples << "";
   for (int i = 0; i < n_samples; i += n_channels) {
     samples_to_process.push_back(samples[i]);
   }
@@ -188,15 +190,20 @@ std::unique_ptr<AudioStream::Context> AudioStream::CreateContext() {
   props = pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio", PW_KEY_CONFIG_NAME,
                             "client-rt.conf", PW_KEY_MEDIA_CATEGORY, "Capture",
                             PW_KEY_MEDIA_ROLE, "Music", NULL);
+  // props =
+  //     pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio", PW_KEY_MEDIA_CATEGORY,
+  //                       "Capture", PW_KEY_MEDIA_ROLE, "Communication",
+  //                       nullptr);
+
   /* Set stream target if given on command line */
   pw_properties_set(props, PW_KEY_TARGET_OBJECT, source_name_.data());
 
-  /* uncomment if you want to capture from the sink monitor ports */
-  /* pw_properties_set(props, PW_KEY_STREAM_CAPTURE_SINK, "true"); */
+  // uncomment if you want to capture from the sink monitor ports
+  // pw_properties_set(props, PW_KEY_STREAM_CAPTURE_SINK, "true");
 
   context->stream =
       pw_stream_new_simple(pw_thread_loop_get_loop(context->loop),
-                           "audio-capture", props, &stream_events, this);
+                           "chrome-audio-capture", props, &stream_events, this);
   return context;
 }
 } // namespace Visualizer
