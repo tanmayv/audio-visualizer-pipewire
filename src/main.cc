@@ -63,26 +63,16 @@ void RenderCircle(
 template <size_t K, size_t frequency_count>
 std::array<audio::ProcessedAudioSample, K>
 maxKElements(const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
-  // if (K <= 0 || arr.size() < K) {
-  //   return {};
-  // }
-
-  // Initialize an array of size K with the smallest possible integer values
   std::array<audio::ProcessedAudioSample, K> topKElements{0};
 
   for (auto sample : audio_buffer.samples) {
-    // Find the position where the current element should be inserted
     auto pos = std::find_if(topKElements.begin(), topKElements.end(),
                             [sample](audio::ProcessedAudioSample x) {
-                              // if (sample.frequency < 1000 || sample.frequency
-                              // > 15000)
-                              //   return false;
                               return sample.normalized_amplitude >
                                      x.normalized_amplitude;
                             });
 
     if (pos != topKElements.end()) {
-      // Shift elements to the left to make space for the new element
       std::copy_backward(pos, topKElements.end() - 1, topKElements.end());
       *pos = sample;
     }
@@ -98,12 +88,15 @@ void RenderWave(
   constexpr size_t max_elements = 3;
   auto max_components =
       maxKElements<max_elements, buffer_size / 4 + 1>(audio_buffer);
+
   std::array<Vector2, drawable_width> points{0};
+
   static std::array<Vector2, drawable_width> rendered_points{
       GetRenderHeight() / 2 + 100.0f};
 
   const float damp_region = 200.0f;
   time += GetFrameTime();
+
   for (int i = 0; i < drawable_width; i++) {
     for (auto &sample : max_components) {
       const float angularFrequency = -2.0f * PI * sample.frequency * 3;
@@ -119,9 +112,9 @@ void RenderWave(
   }
 
   Vector2 last_point = {.x = start_x, .y = GetRenderHeight() / 2 + 100.0f};
+
   for (int i = 0; i < points.size(); i++) {
     rendered_points[i].x = start_x + i;
-    // rendered_points[i].y -= GetRenderHeight() / 2 + 100.0f;
 
     rendered_points[i].y +=
         (points[i].y - rendered_points[i].y) * GetFrameTime() * 10;
@@ -152,13 +145,13 @@ int main() {
         processor2.OnNewSample(std::move(new_samples));
       });
 
-  static float radius = 100;
   InitWindow(1000, 1000, "Example");
   audio_stream.Start();
   audio_stream2.Start();
   while (!WindowShouldClose()) {
     const auto &buffer = processor1.Buffer();
     const auto &buffer2 = processor2.Buffer();
+
     BeginDrawing();
     ClearBackground(BLACK);
     RenderBars(buffer);

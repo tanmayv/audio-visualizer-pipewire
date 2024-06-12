@@ -28,7 +28,6 @@ public:
   void Stop();
   void OnProcess();
   void OnStreamParamChanged(uint32_t id, const struct spa_pod *param);
-  void OnQuit(int signal_number);
 
 private:
   std::unique_ptr<Context> CreateContext();
