@@ -168,7 +168,8 @@ std::unique_ptr<AudioStream::Context> AudioStream::CreateContext() {
 
   /* make a main loop. If you already have another main loop, you can add
    * the fd of this pipewire mainloop to it. */
-  context->loop = pw_thread_loop_new("audio-capture-thread", NULL);
+  auto thread_name = source_name_ + "_audio";
+  context->loop = pw_thread_loop_new(thread_name.data(), NULL);
 
   // pw_loop_add_signal(pw_thread_loop_get_loop(context->loop), SIGINT, do_quit,
   //                    this);

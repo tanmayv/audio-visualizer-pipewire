@@ -5,9 +5,12 @@
 #include <cmath>
 #include <cstddef>
 #include <fftw3.h>
+#include <mutex>
 #include <ostream>
 #include <vector>
 namespace audio {
+
+static std::mutex fftw_mtx;
 
 std::vector<float> BandFrequencies(std::vector<float> fft_out, int sample_rate);
 struct FftOptions {
@@ -48,7 +51,10 @@ void computeFFT64(std::array<float, sample_count> &&samples,
   }
 
   // Create plan for FFT
-  p = fftw_plan_dft_1d(sample_count, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  {
+    std::lock_guard<std::mutex> fftw_guard(fftw_mtx);
+    p = fftw_plan_dft_1d(sample_count, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  }
 
   // Execute FFT
   fftw_execute(p);
@@ -100,9 +106,13 @@ void computeFFT64(std::array<float, sample_count> &&samples,
     output.squashed_samples[m++] = {.normalized_amplitude = a, .frequency = ff};
   }
 
+  // Create plan for FFT
+  {
+    std::lock_guard<std::mutex> fftw_guard(fftw_mtx);
+    fftw_destroy_plan(p);
+    fftw_cleanup();
+  }
   // Cleanup
-  fftw_destroy_plan(p);
-  fftw_cleanup();
 }
 
 std::vector<int> binsToRenderMel(int fftSize, double sampleRate,
