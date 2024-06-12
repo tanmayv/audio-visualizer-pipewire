@@ -2,10 +2,12 @@
 #include "audio-stream.h"
 #include "processed-audio.h"
 #include "raylib.h"
+#include "rlImGui.h"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <imgui.h>
 #include <string>
 #include <vector>
 
@@ -124,6 +126,11 @@ void RenderWave(const audio::ProcessedAudioBuffer &audio_buffer) {
   }
 }
 
+void RenderImgui() {
+  static bool open = true;
+  ImGui::ShowDemoWindow(&open);
+}
+
 int main() {
   audio::AudioProcessor processor1("Test", sample_rate, buffer_size);
   audio::AudioProcessor processor2("Test", sample_rate, buffer_size);
@@ -139,15 +146,30 @@ int main() {
         processor2.OnNewSample(std::move(samples));
       });
 
+  SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
   InitWindow(1000, 1000, "Example");
   audio_stream.Start();
   audio_stream2.Start();
+  bool show_imgui = false;
+
+  rlImGuiSetup(true);
+
   while (!WindowShouldClose()) {
     const auto &buffer = processor1.Buffer();
     const auto &buffer2 = processor2.Buffer();
 
+    if (IsKeyPressed(KEY_C)) {
+      show_imgui = !show_imgui;
+    }
     BeginDrawing();
     ClearBackground(BLACK);
+
+    if (show_imgui) {
+      rlImGuiBegin();
+      RenderImgui();
+      rlImGuiEnd();
+    }
+
     RenderBars(buffer);
     RenderCircle(buffer);
     RenderWave(buffer2);
@@ -155,5 +177,6 @@ int main() {
   }
   audio_stream.Stop();
   audio_stream2.Stop();
+  rlImGuiShutdown(); // cleans up ImGui
   CloseWindow();
 }
