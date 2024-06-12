@@ -1,30 +1,26 @@
 #pragma once
 #include "processed-audio.h"
-#include <array>
-#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <fftw3.h>
 #include <mutex>
-#include <ostream>
 #include <vector>
 namespace audio {
 
 static std::mutex fftw_mtx;
 
-std::vector<float> BandFrequencies(std::vector<float> fft_out, int sample_rate);
 struct FftOptions {
   size_t max_frequency = 30000;
 };
 
-template <size_t sample_count, size_t sample_rate,
-          size_t out_size = sample_count / 2 + 1>
-void computeFFT64(std::array<float, sample_count> &&samples,
-                  ProcessedAudioBuffer<out_size> &output,
+void computeFFT64(std::vector<float> &&samples, size_t sample_rate,
+                  ProcessedAudioBuffer &output,
                   FftOptions options = FftOptions{}) {
 
-  static std::array<double, sample_count> hanning_multipliers = []() {
-    std::array<double, sample_count> window;
+  size_t sample_count = samples.size();
+  size_t out_size = sample_count / 2 + 1;
+  static std::vector<double> hanning_multipliers = [&]() {
+    std::vector<double> window(sample_count);
 
     for (std::size_t i = 0; i < sample_count; ++i) {
       window[i] = 0.5 * (1 - std::cos(2 * M_PI * i / (sample_count - 1)));
@@ -63,16 +59,10 @@ void computeFFT64(std::array<float, sample_count> &&samples,
   float sum = 0;
 
   for (int i = 0; i <= maxIndex && i < out_size; i++) {
-    // amplitudes[i] =
-    //     20 * std::log10((sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]))
-    //     +
-    //                     0.000001);
     output.samples[i].sine_component = out[i][0];
     output.samples[i].cosine_component = out[i][1];
-    output.samples[i].frequency = i * sample_rate / sample_count;
-
-    // float amplitude =
-    //     (std::logf(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
+    output.samples[i].frequency =
+        static_cast<float>(i) * sample_rate / sample_count;
     float amplitude =
         (std::sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]));
     max_amplitude = std::max(max_amplitude, amplitude);
@@ -106,42 +96,10 @@ void computeFFT64(std::array<float, sample_count> &&samples,
     output.squashed_samples[m++] = {.normalized_amplitude = a, .frequency = ff};
   }
 
-  // Create plan for FFT
   {
     std::lock_guard<std::mutex> fftw_guard(fftw_mtx);
     fftw_destroy_plan(p);
     fftw_cleanup();
   }
-  // Cleanup
-}
-
-std::vector<int> binsToRenderMel(int fftSize, double sampleRate,
-                                 int numMelBands);
-std::vector<float> FrequencyBands(std::vector<float> frequencies,
-                                  int band_count);
-std::vector<float> FrequencyBands16(std::vector<float> frequencies);
-
-template <size_t band_size, size_t sample_count>
-const std::array<float, band_size> &
-FrequencyBands(std::array<float, sample_count> frequencies) {
-  static std::array<float, band_size> bands;
-  int freq_index = 0;
-  float avg = 0;
-  int count = 0;
-  for (int i = 0; i < band_size - 1; i++) {
-    avg = 0;
-    count = 0;
-    while (freq_index <= std::pow(2, i)) {
-      avg += frequencies[freq_index++];
-      count++;
-    }
-    bands[i] = avg / count;
-  }
-  while (freq_index < frequencies.size()) {
-    avg += frequencies[freq_index++];
-    count++;
-  }
-  bands[band_size - 1] = avg / count;
-  return bands;
 }
 } // namespace audio

@@ -14,8 +14,7 @@ static constexpr size_t buffer_size = 1 << 10;
 static constexpr size_t frequency_count = buffer_size / 2 + 1;
 static constexpr size_t drawable_width = 500;
 
-void RenderBars(
-    const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
+void RenderBars(const audio::ProcessedAudioBuffer &audio_buffer) {
   float start_x = (GetRenderWidth() - drawable_width) / 2;
   size_t bar_count = audio_buffer.squashed_samples.size();
   float bar_width = drawable_width / (2 * bar_count - 1);
@@ -43,8 +42,7 @@ void RenderBars(
   }
 }
 
-void RenderCircle(
-    const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
+void RenderCircle(const audio::ProcessedAudioBuffer &audio_buffer) {
   Vector2 center = {.x = GetRenderWidth() / 2, .y = GetRenderHeight() / 2};
   float radius = (drawable_width * 1.5 / 2.0f);
   float outer_radius = radius + std::max(audio_buffer.avg_amplitude * 25, 1.0f);
@@ -60,9 +58,9 @@ void RenderCircle(
            color); // Draw ring outline
 }
 
-template <size_t K, size_t frequency_count>
+template <size_t K>
 std::array<audio::ProcessedAudioSample, K>
-maxKElements(const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
+maxKElements(const audio::ProcessedAudioBuffer &audio_buffer) {
   std::array<audio::ProcessedAudioSample, K> topKElements{0};
 
   for (auto sample : audio_buffer.samples) {
@@ -81,13 +79,11 @@ maxKElements(const audio::ProcessedAudioBuffer<frequency_count> &audio_buffer) {
   return topKElements;
 }
 
-void RenderWave(
-    const audio::ProcessedAudioBuffer<buffer_size / 4 + 1> &audio_buffer) {
+void RenderWave(const audio::ProcessedAudioBuffer &audio_buffer) {
   float start_x = (GetRenderWidth() - drawable_width) / 2;
   static float time = 0.0f;
   constexpr size_t max_elements = 3;
-  auto max_components =
-      maxKElements<max_elements, buffer_size / 4 + 1>(audio_buffer);
+  auto max_components = maxKElements<max_elements>(audio_buffer);
 
   std::array<Vector2, drawable_width> points{0};
 
@@ -127,22 +123,18 @@ void RenderWave(
 }
 
 int main() {
-  audio::AudioProcessor<sample_rate, buffer_size> processor1("Test");
-  audio::AudioProcessor<sample_rate / 2, buffer_size / 2> processor2("Test");
+  audio::AudioProcessor processor1("Test", sample_rate, buffer_size);
+  audio::AudioProcessor processor2("Test", sample_rate, buffer_size);
   Visualizer::AudioStream audio_stream(
       "Google Chrome", sample_rate, buffer_size,
       [&](std::vector<float> samples, size_t sample_rate) {
-        std::array<float, buffer_size> new_samples;
-        std::move(samples.begin(), samples.end(), new_samples.begin());
-        processor1.OnNewSample(std::move(new_samples));
+        processor1.OnNewSample(std::move(samples));
       });
 
   Visualizer::AudioStream audio_stream2(
       "rnnoise_source", sample_rate / 2, buffer_size / 2,
       [&](std::vector<float> samples, size_t sample_rate) {
-        std::array<float, buffer_size / 2> new_samples;
-        std::move(samples.begin(), samples.end(), new_samples.begin());
-        processor2.OnNewSample(std::move(new_samples));
+        processor2.OnNewSample(std::move(samples));
       });
 
   InitWindow(1000, 1000, "Example");

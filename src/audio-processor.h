@@ -5,37 +5,29 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace audio {
 
-template <size_t sample_rate, size_t sample_count,
-          size_t frequencies_count = sample_count / 2 + 1>
 class AudioProcessor {
 public:
-  AudioProcessor(std::string_view source)
-      : source_(source), current_buffer_(front_buffer_) {}
-
-  void OnNewSample(std::array<float, sample_count> &&sample) {
-    ProcessAudioSamplesIntoBackBuffer(std::move(sample));
-    SwitchBuffers();
-  }
-  const ProcessedAudioBuffer<frequencies_count> &Buffer() {
-    std::lock_guard<std::mutex> lock(buffer_lock_);
-    return current_buffer_;
-  }
+  AudioProcessor(std::string_view source, size_t sample_rate,
+                 size_t sample_count)
+      : source_(source), sample_rate_(sample_rate),
+        front_buffer_(sample_count / 2 + 1), back_buffer_(sample_count / 2 + 1),
+        current_buffer_(front_buffer_) {}
 
 private:
-  void
-  ProcessAudioSamplesIntoBackBuffer(std::array<float, sample_count> &&sample) {
-    computeFFT64<sample_count, sample_rate>(std::move(sample),
-                                            AlternateBuffer());
-  }
-
-  ProcessedAudioBuffer<frequencies_count> &AlternateBuffer() {
+  ProcessedAudioBuffer &AlternateBuffer() {
     if (is_front_buffer_active_)
       return back_buffer_;
     return front_buffer_;
   }
+
+  void ProcessAudioSamplesIntoBackBuffer(std::vector<float> &&sample) {
+    computeFFT64(std::move(sample), sample_rate_, AlternateBuffer());
+  }
+
   void SwitchBuffers() {
     std::lock_guard<std::mutex> lock(buffer_lock_);
     if (is_front_buffer_active_) {
@@ -46,11 +38,23 @@ private:
     is_front_buffer_active_ = !is_front_buffer_active_;
   }
 
+public:
+  void OnNewSample(std::vector<float> &&sample) {
+    ProcessAudioSamplesIntoBackBuffer(std::move(sample));
+    SwitchBuffers();
+  }
+  const ProcessedAudioBuffer &Buffer() {
+    std::lock_guard<std::mutex> lock(buffer_lock_);
+    return current_buffer_;
+  }
+
+private:
   std::string source_;
+  size_t sample_rate_;
   std::mutex buffer_lock_;
   bool is_front_buffer_active_;
-  ProcessedAudioBuffer<frequencies_count> front_buffer_ = {0};
-  ProcessedAudioBuffer<frequencies_count> back_buffer_ = {0};
-  ProcessedAudioBuffer<frequencies_count> &current_buffer_;
+  ProcessedAudioBuffer front_buffer_;
+  ProcessedAudioBuffer back_buffer_;
+  ProcessedAudioBuffer &current_buffer_;
 };
 } // namespace audio
